@@ -72,18 +72,26 @@ def get_device():
     根据device_id查询设备的production_date
     :return: 设备的生产日期
     """
-    # 获取请求参数
-    device_id = request.args.get('device_id')
-    
-    # 检查device_id参数
-    if not device_id:
-        return make_err_response('缺少device_id参数')
-    
-    # 查询设备信息
-    device = DeviceInfo.query.filter(DeviceInfo.device_id == device_id).first()
-    
-    # 返回结果
-    if device:
-        return make_succ_response(device.production_date.strftime('%Y-%m-%d'))
-    else:
-        return make_succ_response('未找到该设备')
+    try:
+        # 获取请求参数
+        device_id = request.args.get('device_id')
+        
+        # 检查device_id参数
+        if not device_id:
+            return make_err_response('缺少device_id参数')
+        
+        # 查询设备信息
+        device = DeviceInfo.query.filter(DeviceInfo.device_id == device_id).first()
+        
+        # 返回结果
+        if device:
+            return make_succ_response(device.production_date.strftime('%Y-%m-%d'))
+        else:
+            return make_succ_response('未找到该设备')
+    except Exception as e:
+        # 记录详细错误信息
+        import traceback
+        error_msg = f"查询设备失败: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        # 返回包含详细错误信息的响应
+        return make_err_response(error_msg)

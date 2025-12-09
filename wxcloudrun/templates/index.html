@@ -321,12 +321,22 @@
     // 调用API查询设备
     $.ajax("/api/device?device_id=" + deviceId, {
       method: "GET",
-    }).done(function (res) {
-      if (res && res.data !== undefined) {
-        $("span.count-number").html(res.data);
+      dataType: "json",
+      success: function (res) {
+        if (res && res.data !== undefined) {
+          $("span.count-number").html(res.data);
+        }
+      },
+      error: function (err) {
+        // 解析错误信息
+        var errorMsg = "查询失败，请稍后重试";
+        if (err.responseJSON && err.responseJSON.msg) {
+          errorMsg = err.responseJSON.msg;
+        } else if (err.responseText) {
+          errorMsg = err.responseText;
+        }
+        alert(errorMsg);
       }
-    }).error(function (err) {
-      alert("查询失败，请稍后重试");
     });
   }
 </script>
