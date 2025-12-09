@@ -103,6 +103,56 @@ def get_device():
         return make_err_response(f"查询设备失败: {str(e)}")
 
 
+@app.route('/api/device', methods=['POST'])
+def add_device():
+    """
+    添加设备信息
+    :return: 添加结果
+    """
+    try:
+        # 获取请求体参数
+        params = request.get_json()
+        logger.info(f"收到添加设备请求，参数: {params}")
+        
+        # 检查device_id和production_date参数
+        if 'device_id' not in params:
+            logger.warning("添加设备请求缺少device_id参数")
+            return make_err_response('缺少device_id参数')
+        if 'production_date' not in params:
+            logger.warning("添加设备请求缺少production_date参数")
+            return make_err_response('缺少production_date参数')
+        
+        device_id = params['device_id']
+        production_date = params['production_date']
+        
+        # 检查设备ID是否已存在
+        existing_device = DeviceInfo.query.filter(DeviceInfo.device_id == device_id).first()
+        if existing_device:
+            logger.warning(f"设备ID已存在，device_id: {device_id}")
+            return make_err_response('设备ID已存在')
+        
+        # 创建新设备信息
+        logger.info(f"开始添加设备，device_id: {device_id}，production_date: {production_date}")
+        from wxcloudrun import db
+        new_device = DeviceInfo()
+        new_device.device_id = device_id
+        new_device.production_date = datetime.strptime(production_date, '%Y-%m-%d').date()
+        new_device.create_time = datetime.now()
+        
+        # 保存到数据库
+        db.session.add(new_device)
+        db.session.commit()
+        
+        logger.info(f"添加设备成功，device_id: {device_id}")
+        return make_succ_response('添加设备成功')
+    except Exception as e:
+        # 记录详细错误信息
+        logger.error(f"添加设备失败: {str(e)}")
+        log_exception(e)
+        # 返回包含详细错误信息的响应
+        return make_err_response(f"添加设备失败: {str(e)}")
+
+
 @app.route('/api/test_db', methods=['GET'])
 def test_db_connection():
     """

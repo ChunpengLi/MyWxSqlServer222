@@ -256,6 +256,18 @@
         <span>查询结果:</span>
         <span class="count-number" style="margin-left: 8px;"></span>
       </div>
+      <div style="margin-bottom: 32px; width: 320px;">
+        <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: 500; text-align: center;">添加设备信息</h3>
+        <div style="margin-bottom: 16px;">
+          <label for="addDeviceId" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">设备ID:</label>
+          <input type="text" id="addDeviceId" placeholder="请输入设备ID" style="width: 100%; height: 40px; padding: 0 12px; box-sizing: border-box; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 4px; margin-bottom: 16px;">
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label for="addProductionDate" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">生产日期:</label>
+          <input type="date" id="addProductionDate" style="width: 100%; height: 40px; padding: 0 12px; box-sizing: border-box; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 4px; margin-bottom: 16px;">
+        </div>
+        <a class="btn btn-success btn-lg count-button" style="background: #07c160; border: 0; margin-bottom: 16px;" onclick="addDevice()">添加设备</a>
+      </div>
       <div style="margin-bottom: 48px; width: 320px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <label for="logText" style="font-weight: 500; font-size: 14px;">日志信息:</label>
@@ -435,6 +447,60 @@
       },
       error: function (err) {
         var errorMsg = "测试数据库连接失败，请稍后重试";
+        if (err.responseJSON) {
+          if (err.responseJSON.errorMsg) {
+            errorMsg = err.responseJSON.errorMsg;
+          } else if (err.responseJSON.msg) {
+            errorMsg = err.responseJSON.msg;
+          }
+        } else if (err.responseText) {
+          errorMsg = err.responseText;
+        }
+        alert(errorMsg);
+      }
+    });
+  }
+  
+  function addDevice() {
+    // 获取设备ID和生产日期
+    var deviceId = $("#addDeviceId").val();
+    var productionDate = $("#addProductionDate").val();
+    
+    // 检查设备ID是否为空
+    if (!deviceId) {
+      alert("请输入设备ID");
+      return;
+    }
+    
+    // 检查生产日期是否为空
+    if (!productionDate) {
+      alert("请选择生产日期");
+      return;
+    }
+    
+    // 调用API添加设备
+    var url = "/api/device";
+    
+    $.ajax(url, {
+      method: "POST",
+      dataType: "json",
+      contentType: "application/json",
+      data: JSON.stringify({
+        device_id: deviceId,
+        production_date: productionDate
+      }),
+      success: function (res) {
+        if (res && res.data !== undefined) {
+          alert(res.data);
+          // 清空表单
+          $("#addDeviceId").val("");
+          $("#addProductionDate").val("");
+        } else {
+          alert("添加结果格式异常");
+        }
+      },
+      error: function (err) {
+        var errorMsg = "添加设备失败，请稍后重试";
         if (err.responseJSON) {
           if (err.responseJSON.errorMsg) {
             errorMsg = err.responseJSON.errorMsg;
