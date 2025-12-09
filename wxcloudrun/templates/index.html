@@ -250,6 +250,8 @@
       </div>
       <a class="btn btn-success btn-lg count-button" style="background: #07c160; border: 0; margin-bottom: 16px;"
         onclick="queryDevice()">查询生产日期</a>
+      <a class="btn btn-primary btn-lg count-button" style="background: #1890ff; border: 0; margin-bottom: 16px;"
+        onclick="testDbConnection()">测试数据库连接</a>
       <div class="count-text" style="margin-bottom: 48px; justify-content: center;">
         <span>查询结果:</span>
         <span class="count-number" style="margin-left: 8px;"></span>
@@ -330,6 +332,29 @@
       error: function (err) {
         // 解析错误信息
         var errorMsg = "查询失败，请稍后重试";
+        if (err.responseJSON && err.responseJSON.msg) {
+          errorMsg = err.responseJSON.msg;
+        } else if (err.responseText) {
+          errorMsg = err.responseText;
+        }
+        alert(errorMsg);
+      }
+    });
+  }
+  
+  function testDbConnection() {
+    // 调用API测试数据库连接
+    $.ajax("/api/test_db", {
+      method: "GET",
+      dataType: "json",
+      success: function (res) {
+        if (res && res.data !== undefined) {
+          alert(res.data);
+        }
+      },
+      error: function (err) {
+        // 解析错误信息
+        var errorMsg = "测试数据库连接失败，请稍后重试";
         if (err.responseJSON && err.responseJSON.msg) {
           errorMsg = err.responseJSON.msg;
         } else if (err.responseText) {

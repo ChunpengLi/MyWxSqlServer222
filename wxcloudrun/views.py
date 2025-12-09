@@ -95,3 +95,24 @@ def get_device():
         print(error_msg)
         # 返回包含详细错误信息的响应
         return make_err_response(error_msg)
+
+
+@app.route('/api/test_db', methods=['GET'])
+def test_db_connection():
+    """
+    测试数据库连接是否成功
+    :return: 连接结果
+    """
+    try:
+        # 执行一个简单的查询来测试数据库连接
+        from wxcloudrun import db
+        # 使用会话执行一个简单的查询
+        db.session.execute('SELECT 1')
+        return make_succ_response('数据库连接成功')
+    except Exception as e:
+        # 记录详细错误信息
+        import traceback
+        error_msg = f"数据库连接失败: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        # 返回包含详细错误信息的响应
+        return make_err_response(error_msg)
