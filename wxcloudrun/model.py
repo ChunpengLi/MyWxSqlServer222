@@ -12,8 +12,7 @@ class DeviceInfo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     device_id = db.Column(db.String(50), unique=True, nullable=False)
     production_date = db.Column(db.Date, nullable=False)
-    created_at = db.Column(db.TIMESTAMP, nullable=False, default=datetime.now())
-    updated_at = db.Column(db.TIMESTAMP, nullable=False, default=datetime.now())
+    create_time = db.Column(db.TIMESTAMP, nullable=False, default=datetime.now())
 
 
 # 计数表（保留，暂时不删除）
