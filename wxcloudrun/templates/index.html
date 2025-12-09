@@ -332,8 +332,12 @@
       error: function (err) {
         // 解析错误信息
         var errorMsg = "查询失败，请稍后重试";
-        if (err.responseJSON && err.responseJSON.msg) {
-          errorMsg = err.responseJSON.msg;
+        if (err.responseJSON) {
+          if (err.responseJSON.errorMsg) {
+            errorMsg = err.responseJSON.errorMsg;
+          } else if (err.responseJSON.msg) {
+            errorMsg = err.responseJSON.msg;
+          }
         } else if (err.responseText) {
           errorMsg = err.responseText;
         }
@@ -355,8 +359,12 @@
       error: function (err) {
         // 解析错误信息
         var errorMsg = "测试数据库连接失败，请稍后重试";
-        if (err.responseJSON && err.responseJSON.msg) {
-          errorMsg = err.responseJSON.msg;
+        if (err.responseJSON) {
+          if (err.responseJSON.errorMsg) {
+            errorMsg = err.responseJSON.errorMsg;
+          } else if (err.responseJSON.msg) {
+            errorMsg = err.responseJSON.msg;
+          }
         } else if (err.responseText) {
           errorMsg = err.responseText;
         }
