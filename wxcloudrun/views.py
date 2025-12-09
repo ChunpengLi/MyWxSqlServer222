@@ -64,3 +64,26 @@ def get_count():
     """
     counter = Counters.query.filter(Counters.id == 1).first()
     return make_succ_response(0) if counter is None else make_succ_response(counter.count)
+
+
+@app.route('/api/device', methods=['GET'])
+def get_device():
+    """
+    根据device_id查询设备的production_date
+    :return: 设备的生产日期
+    """
+    # 获取请求参数
+    device_id = request.args.get('device_id')
+    
+    # 检查device_id参数
+    if not device_id:
+        return make_err_response('缺少device_id参数')
+    
+    # 查询设备信息
+    device = DeviceInfo.query.filter(DeviceInfo.device_id == device_id).first()
+    
+    # 返回结果
+    if device:
+        return make_succ_response(device.production_date.strftime('%Y-%m-%d'))
+    else:
+        return make_succ_response('未找到该设备')
