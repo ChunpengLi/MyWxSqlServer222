@@ -252,9 +252,16 @@
         onclick="queryDevice()">查询生产日期</a>
       <a class="btn btn-primary btn-lg count-button" style="background: #1890ff; border: 0; margin-bottom: 16px;"
         onclick="testDbConnection()">测试数据库连接</a>
-      <div class="count-text" style="margin-bottom: 48px; justify-content: center;">
+      <div class="count-text" style="margin-bottom: 16px; justify-content: center;">
         <span>查询结果:</span>
         <span class="count-number" style="margin-left: 8px;"></span>
+      </div>
+      <div style="margin-bottom: 48px; width: 320px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label for="logText" style="font-weight: 500; font-size: 14px;">日志信息:</label>
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearLogs()" style="padding: 2px 8px; font-size: 12px;">清空日志</button>
+        </div>
+        <textarea id="logText" style="width: 100%; height: 200px; padding: 12px; box-sizing: border-box; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 4px; resize: vertical; font-family: monospace; font-size: 12px;" readonly></textarea>
       </div>
       <div class="card" style="width: 320px; margin-bottom: 48px;">
         <div class="card-body">
@@ -310,6 +317,69 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js",
   integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
 <script>
+  // 日志记录函数
+  function log(msg) {
+    // 获取当前时间
+    var now = new Date();
+    var timestamp = now.toLocaleString();
+    // 添加时间戳到日志信息
+    var logMsg = "[" + timestamp + "] " + msg + "\n";
+    // 获取当前日志内容
+    var currentLog = $("#logText").val();
+    // 将新日志添加到日志文本框
+    $("#logText").val(currentLog + logMsg);
+    // 滚动到底部
+    scrollLogToBottom();
+  }
+  
+  // 滚动日志到底部
+  function scrollLogToBottom() {
+    var logText = document.getElementById("logText");
+    logText.scrollTop = logText.scrollHeight;
+  }
+  
+  // 从后端获取日志
+  function fetchLogs() {
+    $.ajax("/api/logs", {
+      method: "GET",
+      dataType: "json",
+      success: function (res) {
+        if (res && res.data !== undefined) {
+          // 直接设置日志内容，因为后端已经包含了完整的日志
+          $("#logText").val(res.data);
+          scrollLogToBottom();
+        }
+      },
+      error: function (err) {
+        console.error("获取日志失败:", err);
+      }
+    });
+  }
+  
+  // 清空日志
+  function clearLogs() {
+    $.ajax("/api/logs", {
+      method: "DELETE",
+      dataType: "json",
+      success: function (res) {
+        $("#logText").val("");
+        log("日志已清空");
+      },
+      error: function (err) {
+        console.error("清空日志失败:", err);
+        log("清空日志失败");
+      }
+    });
+  }
+  
+  // 定时获取日志（每秒一次）
+  setInterval(fetchLogs, 1000);
+  
+  // 页面加载时获取一次日志
+  $(document).ready(function() {
+    fetchLogs();
+  });
+  
   function queryDevice() {
     // 获取设备ID
     var deviceId = $("#deviceId").val();
@@ -321,16 +391,19 @@
     }
     
     // 调用API查询设备
-    $.ajax("/api/device?device_id=" + deviceId, {
+    var url = "/api/device?device_id=" + deviceId;
+    
+    $.ajax(url, {
       method: "GET",
       dataType: "json",
       success: function (res) {
         if (res && res.data !== undefined) {
           $("span.count-number").html(res.data);
+        } else {
+          alert("查询结果格式异常");
         }
       },
       error: function (err) {
-        // 解析错误信息
         var errorMsg = "查询失败，请稍后重试";
         if (err.responseJSON) {
           if (err.responseJSON.errorMsg) {
@@ -348,16 +421,19 @@
   
   function testDbConnection() {
     // 调用API测试数据库连接
-    $.ajax("/api/test_db", {
+    var url = "/api/test_db";
+    
+    $.ajax(url, {
       method: "GET",
       dataType: "json",
       success: function (res) {
         if (res && res.data !== undefined) {
           alert(res.data);
+        } else {
+          alert("测试结果格式异常");
         }
       },
       error: function (err) {
-        // 解析错误信息
         var errorMsg = "测试数据库连接失败，请稍后重试";
         if (err.responseJSON) {
           if (err.responseJSON.errorMsg) {

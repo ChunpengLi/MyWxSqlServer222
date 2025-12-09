@@ -4,6 +4,7 @@ from run import app
 from wxcloudrun.dao import delete_counterbyid, query_counterbyid, insert_counter, update_counterbyid
 from wxcloudrun.model import Counters, DeviceInfo
 from wxcloudrun.response import make_succ_empty_response, make_succ_response, make_err_response
+from wxcloudrun.logger import logger, get_logs, clear_logs, log_exception
 
 
 @app.route('/')
@@ -75,26 +76,31 @@ def get_device():
     try:
         # 获取请求参数
         device_id = request.args.get('device_id')
+        logger.info(f"收到设备查询请求，device_id: {device_id}")
         
         # 检查device_id参数
         if not device_id:
+            logger.warning("设备查询请求缺少device_id参数")
             return make_err_response('缺少device_id参数')
         
         # 查询设备信息
+        logger.info(f"开始查询设备信息，device_id: {device_id}")
         device = DeviceInfo.query.filter(DeviceInfo.device_id == device_id).first()
         
         # 返回结果
         if device:
-            return make_succ_response(device.production_date.strftime('%Y-%m-%d'))
+            production_date = device.production_date.strftime('%Y-%m-%d')
+            logger.info(f"查询成功，device_id: {device_id}，production_date: {production_date}")
+            return make_succ_response(production_date)
         else:
+            logger.info(f"未找到设备，device_id: {device_id}")
             return make_succ_response('未找到该设备')
     except Exception as e:
         # 记录详细错误信息
-        import traceback
-        error_msg = f"查询设备失败: {str(e)}\n{traceback.format_exc()}"
-        print(error_msg)
+        logger.error(f"查询设备失败: {str(e)}")
+        log_exception(e)
         # 返回包含详细错误信息的响应
-        return make_err_response(error_msg)
+        return make_err_response(f"查询设备失败: {str(e)}")
 
 
 @app.route('/api/test_db', methods=['GET'])
@@ -104,15 +110,47 @@ def test_db_connection():
     :return: 连接结果
     """
     try:
+        logger.info("开始测试数据库连接")
         # 执行一个简单的查询来测试数据库连接
         from wxcloudrun import db
         # 使用会话执行一个简单的查询
         db.session.execute('SELECT 1')
+        logger.info("数据库连接测试成功")
         return make_succ_response('数据库连接成功')
     except Exception as e:
         # 记录详细错误信息
-        import traceback
-        error_msg = f"数据库连接失败: {str(e)}\n{traceback.format_exc()}"
-        print(error_msg)
+        logger.error(f"数据库连接测试失败: {str(e)}")
+        log_exception(e)
         # 返回包含详细错误信息的响应
-        return make_err_response(error_msg)
+        return make_err_response(f"数据库连接失败: {str(e)}")
+
+
+@app.route('/api/logs', methods=['GET'])
+def get_logs_api():
+    """
+    获取日志信息
+    :return: 日志信息
+    """
+    try:
+        logs = get_logs()
+        return make_succ_response(logs)
+    except Exception as e:
+        logger.error(f"获取日志失败: {str(e)}")
+        log_exception(e)
+        return make_err_response(f"获取日志失败: {str(e)}")
+
+
+@app.route('/api/logs', methods=['DELETE'])
+def clear_logs_api():
+    """
+    清空日志信息
+    :return: 清空结果
+    """
+    try:
+        clear_logs()
+        logger.info("日志已清空")
+        return make_succ_empty_response()
+    except Exception as e:
+        logger.error(f"清空日志失败: {str(e)}")
+        log_exception(e)
+        return make_err_response(f"清空日志失败: {str(e)}")
