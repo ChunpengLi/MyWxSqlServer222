@@ -249,12 +249,58 @@
         <input type="text" id="deviceId" placeholder="请输入设备ID" style="width: 100%; height: 40px; padding: 0 12px; box-sizing: border-box; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 4px; margin-bottom: 16px;">
       </div>
       <a class="btn btn-success btn-lg count-button" style="background: #07c160; border: 0; margin-bottom: 16px;"
-        onclick="queryDevice()">查询生产日期</a>
+        onclick="queryDevice()">查询设备信息</a>
       <a class="btn btn-primary btn-lg count-button" style="background: #1890ff; border: 0; margin-bottom: 16px;"
         onclick="testDbConnection()">测试数据库连接</a>
-      <div class="count-text" style="margin-bottom: 16px; justify-content: center;">
-        <span>查询结果:</span>
-        <span class="count-number" style="margin-left: 8px;"></span>
+      <div style="margin-bottom: 16px; width: 320px;">
+        <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: 500; text-align: center;">查询结果</h3>
+        <div id="deviceInfoResult" style="width: 100%; padding: 16px; box-sizing: border-box; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 4px; background: #fafafa;">
+          <div class="count-text" style="justify-content: center; margin-bottom: 8px;">
+            <span>查询结果:</span>
+            <span class="count-number" style="margin-left: 8px;"></span>
+          </div>
+          <div id="deviceDetails" style="margin-top: 16px; display: none;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px; text-align: left; font-weight: 500; border-bottom: 1px solid rgba(0, 0, 0, 0.1);">生产日期:</td>
+                <td id="prodDate" style="padding: 8px; text-align: left; border-bottom: 1px solid rgba(0, 0, 0, 0.1);"></td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; text-align: left; font-weight: 500; border-bottom: 1px solid rgba(0, 0, 0, 0.1);">箱体码:</td>
+                <td id="containerCode" style="padding: 8px; text-align: left; border-bottom: 1px solid rgba(0, 0, 0, 0.1);"></td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; text-align: left; font-weight: 500; border-bottom: 1px solid rgba(0, 0, 0, 0.1);">IP地址:</td>
+                <td id="ipAddr" style="padding: 8px; text-align: left; border-bottom: 1px solid rgba(0, 0, 0, 0.1);"></td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; text-align: left; font-weight: 500; border-bottom: 1px solid rgba(0, 0, 0, 0.1);">问题记录:</td>
+                <td id="issueRecord" style="padding: 8px; text-align: left; border-bottom: 1px solid rgba(0, 0, 0, 0.1);"></td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; text-align: left; font-weight: 500;">备注:</td>
+                <td id="remark" style="padding: 8px; text-align: left;"></td>
+              </tr>
+            </table>
+          </div>
+          <div id="repairInfoResult" style="margin-top: 24px; display: none;">
+            <h4 style="margin-bottom: 12px; font-size: 16px; font-weight: 500;">维修记录</h4>
+            <table id="repairTable" style="width: 100%; border-collapse: collapse; border: 1px solid rgba(0, 0, 0, 0.1);">
+              <thead>
+                <tr>
+                  <th style="padding: 8px; text-align: center; font-weight: 500; border-bottom: 1px solid rgba(0, 0, 0, 0.1); background: #f0f0f0;">维修日期</th>
+                  <th style="padding: 8px; text-align: center; font-weight: 500; border-bottom: 1px solid rgba(0, 0, 0, 0.1); background: #f0f0f0;">维修记录</th>
+                  <th style="padding: 8px; text-align: center; font-weight: 500; border-bottom: 1px solid rgba(0, 0, 0, 0.1); background: #f0f0f0;">维修人员</th>
+                  <th style="padding: 8px; text-align: center; font-weight: 500; border-bottom: 1px solid rgba(0, 0, 0, 0.1); background: #f0f0f0;">创建时间</th>
+                </tr>
+              </thead>
+              <tbody id="repairTableBody">
+                <!-- 维修记录将动态插入这里 -->
+              </tbody>
+            </table>
+            <div id="noRepairRecord" style="margin-top: 12px; text-align: center; color: #666; font-style: italic; display: none;">没有找到维修记录</div>
+          </div>
+        </div>
       </div>
       <div style="margin-bottom: 32px; width: 320px;">
         <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: 500; text-align: center;">添加设备信息</h3>
@@ -410,7 +456,32 @@
       dataType: "json",
       success: function (res) {
         if (res && res.data !== undefined) {
-          $("span.count-number").html(res.data);
+          // 清空之前的结果
+          $("#deviceDetails").hide();
+          $("#repairInfoResult").hide();
+          $("#repairTableBody").empty();
+          
+          // 检查返回的数据类型
+          if (typeof res.data === 'object') {
+            // 是设备信息对象，显示详细信息
+            $("span.count-number").html("成功");
+            
+            // 填充设备信息
+            $("#prodDate").text(res.data.production_date || "(空)");
+            $("#containerCode").text(res.data.container_code || "(空)");
+            $("#ipAddr").text(res.data.ip_addr || "(空)");
+            $("#issueRecord").text(res.data.issue_record || "(空)");
+            $("#remark").text(res.data.remark || "(空)");
+            
+            // 显示设备详情
+            $("#deviceDetails").show();
+            
+            // 查询维修信息
+            queryRepairInfo(deviceId);
+          } else {
+            // 是字符串，直接显示
+            $("span.count-number").html(res.data);
+          }
         } else {
           alert("查询结果格式异常");
         }
@@ -427,6 +498,50 @@
           errorMsg = err.responseText;
         }
         alert(errorMsg);
+      }
+    });
+  }
+  
+  // 查询维修信息
+  function queryRepairInfo(deviceId) {
+    var repairUrl = "/api/repair?device_id=" + deviceId;
+    
+    $.ajax(repairUrl, {
+      method: "GET",
+      dataType: "json",
+      success: function (res) {
+        if (res && res.data !== undefined) {
+          // 显示维修信息结果
+          $("#repairInfoResult").show();
+          
+          // 清空之前的维修记录
+          $("#repairTableBody").empty();
+          $("#noRepairRecord").hide();
+          
+          // 检查维修记录
+          if (Array.isArray(res.data) && res.data.length > 0) {
+            // 有维修记录，动态生成表格行
+            res.data.forEach(function(repair) {
+              var tr = $('<tr></tr>');
+              tr.append($('<td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(0, 0, 0, 0.1);"></td>').text(repair.repair_date || "(空)"));
+              tr.append($('<td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(0, 0, 0, 0.1);"></td>').text(repair.repair_note || "(空)"));
+              tr.append($('<td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(0, 0, 0, 0.1);"></td>').text(repair.engineer_name || "(空)"));
+              tr.append($('<td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(0, 0, 0, 0.1);"></td>').text(repair.create_time || "(空)"));
+              $("#repairTableBody").append(tr);
+            });
+          } else {
+            // 没有维修记录
+            $("#noRepairRecord").show();
+          }
+        } else {
+          console.error("维修信息查询结果格式异常");
+        }
+      },
+      error: function (err) {
+        console.error("查询维修信息失败:", err);
+        // 显示没有维修记录
+        $("#repairInfoResult").show();
+        $("#noRepairRecord").show();
       }
     });
   }

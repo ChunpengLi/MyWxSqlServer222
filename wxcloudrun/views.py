@@ -1,10 +1,12 @@
 from datetime import datetime
 from flask import render_template, request
 from run import app
+from sqlalchemy import text
 from wxcloudrun.dao import delete_counterbyid, query_counterbyid, insert_counter, update_counterbyid
-from wxcloudrun.model import Counters, DeviceInfo
+from wxcloudrun.model import Counters, DeviceInfo, RepairInfo
 from wxcloudrun.response import make_succ_empty_response, make_succ_response, make_err_response
 from wxcloudrun.logger import logger, get_logs, clear_logs, log_exception
+from wxcloudrun import db
 
 
 @app.route('/')
@@ -70,8 +72,8 @@ def get_count():
 @app.route('/api/device', methods=['GET'])
 def get_device():
     """
-    根据device_id查询设备的production_date
-    :return: 设备的生产日期
+    根据device_id查询设备的详细信息
+    :return: 设备的详细信息，包括生产日期、箱体码、IP地址、问题记录、备注
     """
     try:
         # 获取请求参数
@@ -83,15 +85,28 @@ def get_device():
             logger.warning("设备查询请求缺少device_id参数")
             return make_err_response('缺少device_id参数')
         
-        # 查询设备信息
+        # 使用直接SQL查询设备信息，避免immutabledict问题
         logger.info(f"开始查询设备信息，device_id: {device_id}")
-        device = DeviceInfo.query.filter(DeviceInfo.device_id == device_id).first()
+        with db.engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT production_date, container_code, ip_addr, issue_record, remark 
+                FROM device_info 
+                WHERE device_id = :device_id
+            """), device_id=device_id)
+            device = result.fetchone()
         
         # 返回结果
         if device:
-            production_date = device.production_date.strftime('%Y-%m-%d')
-            logger.info(f"查询成功，device_id: {device_id}，production_date: {production_date}")
-            return make_succ_response(production_date)
+            # 构建设备信息字典
+            device_info = {
+                'production_date': device.production_date.strftime('%Y-%m-%d') if device.production_date else None,
+                'container_code': device.container_code,
+                'ip_addr': device.ip_addr,
+                'issue_record': device.issue_record,
+                'remark': device.remark
+            }
+            logger.info(f"查询成功，device_id: {device_id}，device_info: {device_info}")
+            return make_succ_response(device_info)
         else:
             logger.info(f"未找到设备，device_id: {device_id}")
             return make_succ_response('未找到该设备')
@@ -204,3 +219,61 @@ def clear_logs_api():
         logger.error(f"清空日志失败: {str(e)}")
         log_exception(e)
         return make_err_response(f"清空日志失败: {str(e)}")
+
+
+@app.route('/api/repair', methods=['GET'])
+def get_repair():
+    """
+    根据device_id查询设备的维修信息
+    :return: 设备的维修信息列表
+    """
+    try:
+        # 获取请求参数
+        device_id = request.args.get('device_id')
+        logger.info(f"收到设备维修信息查询请求，device_id: {device_id}")
+        
+        # 检查device_id参数
+        if not device_id:
+            logger.warning("设备维修信息查询请求缺少device_id参数")
+            return make_err_response('缺少device_id参数')
+        
+        # 使用直接SQL查询设备维修信息，避免immutabledict问题
+        logger.info(f"开始查询设备维修信息，device_id: {device_id}")
+        with db.engine.connect() as conn:
+            # 只查询实际存在的字段
+            result = conn.execute(text("""
+                SELECT repair_date, repair_note, engineer_name, create_time 
+                FROM repair_info 
+                WHERE device_id = :device_id
+            """), device_id=device_id)
+            repairs = result.fetchall()
+        
+        # 返回结果
+        if repairs:
+            # 构建维修信息列表
+            repair_list = []
+            for repair in repairs:
+                # 将结果转换为字典，动态处理列名
+                repair_dict = dict(repair._mapping)
+                # 格式化日期时间字段
+                for key, value in repair_dict.items():
+                    if hasattr(value, 'strftime'):
+                        if 'date' in key.lower():
+                            repair_dict[key] = value.strftime('%Y-%m-%d')
+                        elif 'time' in key.lower():
+                            repair_dict[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                    # 转换decimal类型为float
+                    if hasattr(value, 'as_integer_ratio'):
+                        repair_dict[key] = float(value)
+                repair_list.append(repair_dict)
+            logger.info(f"查询成功，device_id: {device_id}，找到{len(repair_list)}条维修记录")
+            return make_succ_response(repair_list)
+        else:
+            logger.info(f"未找到设备维修记录，device_id: {device_id}")
+            return make_succ_response([])
+    except Exception as e:
+        # 记录详细错误信息
+        logger.error(f"查询设备维修信息失败: {str(e)}")
+        log_exception(e)
+        # 返回包含详细错误信息的响应
+        return make_err_response(f"查询设备维修信息失败: {str(e)}")
