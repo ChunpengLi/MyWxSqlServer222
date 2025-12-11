@@ -314,6 +314,26 @@
         </div>
         <a class="btn btn-success btn-lg count-button" style="background: #07c160; border: 0; margin-bottom: 16px;" onclick="addDevice()">添加设备</a>
       </div>
+      <div style="margin-bottom: 32px; width: 320px;">
+        <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: 500; text-align: center;">添加维修信息</h3>
+        <div style="margin-bottom: 16px;">
+          <label for="addRepairDeviceId" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">设备ID:</label>
+          <input type="text" id="addRepairDeviceId" placeholder="请输入设备ID" style="width: 100%; height: 40px; padding: 0 12px; box-sizing: border-box; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 4px; margin-bottom: 16px;">
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label for="addRepairDate" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">维修日期:</label>
+          <input type="date" id="addRepairDate" style="width: 100%; height: 40px; padding: 0 12px; box-sizing: border-box; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 4px; margin-bottom: 16px;">
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label for="addRepairRecord" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">维修记录:</label>
+          <textarea id="addRepairRecord" placeholder="请输入维修记录" style="width: 100%; height: 80px; padding: 8px 12px; box-sizing: border-box; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 4px; margin-bottom: 16px; resize: vertical;"></textarea>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label for="addEngineerName" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px;">维修人员:</label>
+          <input type="text" id="addEngineerName" placeholder="请输入维修人员姓名" style="width: 100%; height: 40px; padding: 0 12px; box-sizing: border-box; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 4px; margin-bottom: 16px;">
+        </div>
+        <a class="btn btn-success btn-lg count-button" style="background: #07c160; border: 0; margin-bottom: 16px;" onclick="addRepair()">添加维修信息</a>
+      </div>
       <div style="margin-bottom: 48px; width: 320px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <label for="logText" style="font-weight: 500; font-size: 14px;">日志信息:</label>
@@ -616,6 +636,76 @@
       },
       error: function (err) {
         var errorMsg = "添加设备失败，请稍后重试";
+        if (err.responseJSON) {
+          if (err.responseJSON.errorMsg) {
+            errorMsg = err.responseJSON.errorMsg;
+          } else if (err.responseJSON.msg) {
+            errorMsg = err.responseJSON.msg;
+          }
+        } else if (err.responseText) {
+          errorMsg = err.responseText;
+        }
+        alert(errorMsg);
+      }
+    });
+  }
+  
+  // 添加维修信息
+  function addRepair() {
+    // 获取表单数据
+    var deviceId = $("#addRepairDeviceId").val();
+    var repairDate = $("#addRepairDate").val();
+    var repairRecord = $("#addRepairRecord").val();
+    var engineerName = $("#addEngineerName").val();
+    
+    // 表单验证
+    if (!deviceId) {
+      alert("请输入设备ID");
+      return;
+    }
+    
+    if (!repairDate) {
+      alert("请选择维修日期");
+      return;
+    }
+    
+    if (!repairRecord) {
+      alert("请输入维修记录");
+      return;
+    }
+    
+    if (!engineerName) {
+      alert("请输入维修人员姓名");
+      return;
+    }
+    
+    // 调用API添加维修信息
+    var url = "/api/repair";
+    
+    $.ajax(url, {
+      method: "POST",
+      dataType: "json",
+      contentType: "application/json",
+      data: JSON.stringify({
+        device_id: deviceId,
+        repair_date: repairDate,
+        repair_record: repairRecord,
+        engineer_name: engineerName
+      }),
+      success: function (res) {
+        if (res && res.data !== undefined) {
+          alert(res.data);
+          // 清空表单
+          $("#addRepairDeviceId").val("");
+          $("#addRepairDate").val("");
+          $("#addRepairRecord").val("");
+          $("#addEngineerName").val("");
+        } else {
+          alert("添加结果格式异常");
+        }
+      },
+      error: function (err) {
+        var errorMsg = "添加维修信息失败，请稍后重试";
         if (err.responseJSON) {
           if (err.responseJSON.errorMsg) {
             errorMsg = err.responseJSON.errorMsg;

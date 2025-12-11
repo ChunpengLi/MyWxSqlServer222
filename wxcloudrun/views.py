@@ -277,3 +277,61 @@ def get_repair():
         log_exception(e)
         # 返回包含详细错误信息的响应
         return make_err_response(f"查询设备维修信息失败: {str(e)}")
+
+
+@app.route('/api/repair', methods=['POST'])
+def add_repair():
+    """
+    添加设备维修信息
+    :return: 添加结果
+    """
+    try:
+        # 获取请求体参数
+        params = request.get_json()
+        logger.info(f"收到添加维修信息请求，参数: {params}")
+        
+        # 检查必要参数
+        required_params = ['device_id', 'repair_date', 'engineer_name']
+        for param in required_params:
+            if param not in params:
+                logger.warning(f"添加维修信息请求缺少{param}参数")
+                return make_err_response(f'缺少{param}参数')
+        
+        # 检查维修记录参数，可以是repair_record或repair_note
+        if 'repair_record' not in params and 'repair_note' not in params:
+            logger.warning("添加维修信息请求缺少repair_record或repair_note参数")
+            return make_err_response('缺少repair_record或repair_note参数')
+        
+        device_id = params['device_id']
+        repair_date = params['repair_date']
+        # 优先使用repair_record参数，如果没有则使用repair_note
+        repair_record = params.get('repair_record') or params.get('repair_note')
+        engineer_name = params['engineer_name']
+        
+        # 检查设备是否存在
+        existing_device = DeviceInfo.query.filter(DeviceInfo.device_id == device_id).first()
+        if not existing_device:
+            logger.warning(f"设备不存在，device_id: {device_id}")
+            return make_err_response('设备不存在')
+        
+        # 创建新维修信息
+        logger.info(f"开始添加维修信息，device_id: {device_id}")
+        new_repair = RepairInfo()
+        new_repair.device_id = device_id
+        new_repair.repair_date = datetime.strptime(repair_date, '%Y-%m-%d').date()
+        new_repair.repair_note = repair_record
+        new_repair.engineer_name = engineer_name
+        new_repair.create_time = datetime.now()
+        
+        # 保存到数据库
+        db.session.add(new_repair)
+        db.session.commit()
+        
+        logger.info(f"添加维修信息成功，device_id: {device_id}")
+        return make_succ_response('添加维修信息成功')
+    except Exception as e:
+        # 记录详细错误信息
+        logger.error(f"添加维修信息失败: {str(e)}")
+        log_exception(e)
+        # 返回包含详细错误信息的响应
+        return make_err_response(f"添加维修信息失败: {str(e)}")
