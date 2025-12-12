@@ -427,7 +427,19 @@ def execute_sql():
                 # 转换为列表字典格式
                 result_list = []
                 for row in rows:
-                    result_list.append(dict(row._mapping))
+                    # 将结果转换为字典
+                    row_dict = dict(row._mapping)
+                    # 格式化日期时间字段
+                    for key, value in row_dict.items():
+                        if hasattr(value, 'strftime'):
+                            if 'date' in key.lower():
+                                row_dict[key] = value.strftime('%Y-%m-%d')
+                            elif 'time' in key.lower():
+                                row_dict[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                        # 转换decimal类型为float
+                        if hasattr(value, 'as_integer_ratio'):
+                            row_dict[key] = float(value)
+                    result_list.append(row_dict)
                 
                 logger.info(f"SQL查询成功，返回{len(result_list)}条记录")
                 # 直接返回原始JSON格式，不包装
