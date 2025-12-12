@@ -402,14 +402,19 @@ def execute_sql():
     :return: 查询结果或修改结果
     """
     try:
-        # 获取请求体参数
-        params = request.get_json()
+        # 获取请求体参数，force=True强制解析JSON，无论Content-Type头
+        params = request.get_json(force=True)
         logger.info(f"收到SQL请求，参数: {params}")
+        
+        # 检查params是否为None
+        if params is None:
+            logger.warning("SQL请求参数解析失败，可能是无效的JSON格式")
+            from flask import jsonify
+            return jsonify({'error': '无效的JSON格式'}), 400
         
         # 检查sql参数
         if 'sql' not in params:
             logger.warning("SQL请求缺少sql参数")
-            # 直接返回原始JSON格式，不包装
             from flask import jsonify
             return jsonify({'error': '缺少sql参数'}), 400
         
