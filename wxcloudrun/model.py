@@ -6,7 +6,7 @@ from wxcloudrun import db
 # 设备信息表
 class DeviceInfo(db.Model):
     # 设置结构体表格名称
-    __tablename__ = 'device_info'
+    __tablename__ = 'device_info_basic'
 
     # 设定结构体对应表格的字段
     id = db.Column(db.Integer, primary_key=True)

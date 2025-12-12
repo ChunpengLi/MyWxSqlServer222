@@ -90,7 +90,7 @@ def get_device():
         with db.engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT production_date, container_code, ip_addr, issue_record, remark 
-                FROM device_info 
+                FROM device_info_basic 
                 WHERE device_id = :device_id
             """), device_id=device_id)
             device = result.fetchone()
