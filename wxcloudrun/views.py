@@ -28,7 +28,9 @@ def count():
 
     # 检查action参数
     if 'action' not in params:
-        return make_err_response('缺少action参数')
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': '缺少action参数'}), 400
 
     # 按照不同的action的值，进行不同的操作
     action = params['action']
@@ -48,16 +50,22 @@ def count():
             counter.count += 4
             counter.updated_at = datetime.now()
             update_counterbyid(counter)
-        return make_succ_response(counter.count)
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify(counter.count)
 
     # 执行清0操作
     elif action == 'clear':
         delete_counterbyid(1)
-        return make_succ_empty_response()
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({})
 
     # action参数错误
     else:
-        return make_err_response('action参数错误')
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': 'action参数错误'}), 400
 
 
 @app.route('/api/count', methods=['GET'])
@@ -66,7 +74,9 @@ def get_count():
     :return: 计数的值
     """
     counter = Counters.query.filter(Counters.id == 1).first()
-    return make_succ_response(0) if counter is None else make_succ_response(counter.count)
+    # 直接返回原始JSON格式，不包装
+    from flask import jsonify
+    return jsonify(0) if counter is None else jsonify(counter.count)
 
 
 @app.route('/api/device', methods=['GET'])
@@ -83,13 +93,16 @@ def get_device():
         # 检查device_id参数
         if not device_id:
             logger.warning("设备查询请求缺少device_id参数")
-            return make_err_response('缺少device_id参数')
+            # 直接返回原始JSON格式，不包装
+            from flask import jsonify
+            return jsonify({'error': '缺少device_id参数'}), 400
         
         # 使用直接SQL查询设备信息，避免immutabledict问题
         logger.info(f"开始查询设备信息，device_id: {device_id}")
         with db.engine.connect() as conn:
+            # 使用SELECT *查询所有实际存在的列
             result = conn.execute(text("""
-                SELECT production_date, container_code, ip_addr, issue_record, remark 
+                SELECT * 
                 FROM device_info_basic 
                 WHERE device_id = :device_id
             """), device_id=device_id)
@@ -97,25 +110,34 @@ def get_device():
         
         # 返回结果
         if device:
-            # 构建设备信息字典
-            device_info = {
-                'production_date': device.production_date.strftime('%Y-%m-%d') if device.production_date else None,
-                'container_code': device.container_code,
-                'ip_addr': device.ip_addr,
-                'issue_record': device.issue_record,
-                'remark': device.remark
-            }
+            # 构建设备信息字典，动态处理所有列
+            device_info = dict(device._mapping)
+            # 格式化日期时间字段
+            for key, value in device_info.items():
+                if hasattr(value, 'strftime'):
+                    if 'date' in key.lower():
+                        device_info[key] = value.strftime('%Y-%m-%d')
+                    elif 'time' in key.lower():
+                        device_info[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                # 转换decimal类型为float
+                if hasattr(value, 'as_integer_ratio'):
+                    device_info[key] = float(value)
             logger.info(f"查询成功，device_id: {device_id}，device_info: {device_info}")
-            return make_succ_response(device_info)
+            # 直接返回原始JSON格式，不包装
+            from flask import jsonify
+            return jsonify(device_info)
         else:
             logger.info(f"未找到设备，device_id: {device_id}")
-            return make_succ_response('未找到该设备')
+            # 直接返回原始JSON格式，不包装
+            from flask import jsonify
+            return jsonify({'message': '未找到该设备'})
     except Exception as e:
         # 记录详细错误信息
         logger.error(f"查询设备失败: {str(e)}")
         log_exception(e)
-        # 返回包含详细错误信息的响应
-        return make_err_response(f"查询设备失败: {str(e)}")
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': f"查询设备失败: {str(e)}"}), 500
 
 
 @app.route('/api/device', methods=['POST'])
@@ -132,10 +154,14 @@ def add_device():
         # 检查device_id和production_date参数
         if 'device_id' not in params:
             logger.warning("添加设备请求缺少device_id参数")
-            return make_err_response('缺少device_id参数')
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': '缺少device_id参数'}), 400
         if 'production_date' not in params:
             logger.warning("添加设备请求缺少production_date参数")
-            return make_err_response('缺少production_date参数')
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': '缺少production_date参数'}), 400
         
         device_id = params['device_id']
         production_date = params['production_date']
@@ -144,7 +170,9 @@ def add_device():
         existing_device = DeviceInfo.query.filter(DeviceInfo.device_id == device_id).first()
         if existing_device:
             logger.warning(f"设备ID已存在，device_id: {device_id}")
-            return make_err_response('设备ID已存在')
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': '设备ID已存在'}), 400
         
         # 创建新设备信息
         logger.info(f"开始添加设备，device_id: {device_id}，production_date: {production_date}")
@@ -159,13 +187,16 @@ def add_device():
         db.session.commit()
         
         logger.info(f"添加设备成功，device_id: {device_id}")
-        return make_succ_response('添加设备成功')
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'message': '添加设备成功'})
     except Exception as e:
         # 记录详细错误信息
         logger.error(f"添加设备失败: {str(e)}")
         log_exception(e)
-        # 返回包含详细错误信息的响应
-        return make_err_response(f"添加设备失败: {str(e)}")
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': f"添加设备失败: {str(e)}"}), 500
 
 
 @app.route('/api/test_db', methods=['GET'])
@@ -181,13 +212,16 @@ def test_db_connection():
         # 使用会话执行一个简单的查询
         db.session.execute('SELECT 1')
         logger.info("数据库连接测试成功")
-        return make_succ_response('数据库连接成功')
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'message': '数据库连接成功'})
     except Exception as e:
         # 记录详细错误信息
         logger.error(f"数据库连接测试失败: {str(e)}")
         log_exception(e)
-        # 返回包含详细错误信息的响应
-        return make_err_response(f"数据库连接失败: {str(e)}")
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': f"数据库连接失败: {str(e)}"}), 500
 
 
 @app.route('/api/logs', methods=['GET'])
@@ -198,11 +232,15 @@ def get_logs_api():
     """
     try:
         logs = get_logs()
-        return make_succ_response(logs)
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify(logs)
     except Exception as e:
         logger.error(f"获取日志失败: {str(e)}")
         log_exception(e)
-        return make_err_response(f"获取日志失败: {str(e)}")
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': f"获取日志失败: {str(e)}"}), 500
 
 
 @app.route('/api/logs', methods=['DELETE'])
@@ -214,11 +252,15 @@ def clear_logs_api():
     try:
         clear_logs()
         logger.info("日志已清空")
-        return make_succ_empty_response()
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({})
     except Exception as e:
         logger.error(f"清空日志失败: {str(e)}")
         log_exception(e)
-        return make_err_response(f"清空日志失败: {str(e)}")
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': f"清空日志失败: {str(e)}"}), 500
 
 
 @app.route('/api/repair', methods=['GET'])
@@ -235,7 +277,9 @@ def get_repair():
         # 检查device_id参数
         if not device_id:
             logger.warning("设备维修信息查询请求缺少device_id参数")
-            return make_err_response('缺少device_id参数')
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': '缺少device_id参数'}), 400
         
         # 使用直接SQL查询设备维修信息，避免immutabledict问题
         logger.info(f"开始查询设备维修信息，device_id: {device_id}")
@@ -267,16 +311,21 @@ def get_repair():
                         repair_dict[key] = float(value)
                 repair_list.append(repair_dict)
             logger.info(f"查询成功，device_id: {device_id}，找到{len(repair_list)}条维修记录")
-            return make_succ_response(repair_list)
+            # 直接返回原始JSON格式，不包装
+            from flask import jsonify
+            return jsonify(repair_list)
         else:
             logger.info(f"未找到设备维修记录，device_id: {device_id}")
-            return make_succ_response([])
+            # 直接返回原始JSON格式，不包装
+            from flask import jsonify
+            return jsonify([])
     except Exception as e:
         # 记录详细错误信息
         logger.error(f"查询设备维修信息失败: {str(e)}")
         log_exception(e)
-        # 返回包含详细错误信息的响应
-        return make_err_response(f"查询设备维修信息失败: {str(e)}")
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': f"查询设备维修信息失败: {str(e)}"}), 500
 
 
 @app.route('/api/repair', methods=['POST'])
@@ -295,12 +344,16 @@ def add_repair():
         for param in required_params:
             if param not in params:
                 logger.warning(f"添加维修信息请求缺少{param}参数")
-                return make_err_response(f'缺少{param}参数')
+            # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': f'缺少{param}参数'}), 400
         
         # 检查维修记录参数，可以是repair_record或repair_note
         if 'repair_record' not in params and 'repair_note' not in params:
             logger.warning("添加维修信息请求缺少repair_record或repair_note参数")
-            return make_err_response('缺少repair_record或repair_note参数')
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': '缺少repair_record或repair_note参数'}), 400
         
         device_id = params['device_id']
         repair_date = params['repair_date']
@@ -312,7 +365,9 @@ def add_repair():
         existing_device = DeviceInfo.query.filter(DeviceInfo.device_id == device_id).first()
         if not existing_device:
             logger.warning(f"设备不存在，device_id: {device_id}")
-            return make_err_response('设备不存在')
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': '设备不存在'}), 400
         
         # 创建新维修信息
         logger.info(f"开始添加维修信息，device_id: {device_id}")
@@ -328,10 +383,58 @@ def add_repair():
         db.session.commit()
         
         logger.info(f"添加维修信息成功，device_id: {device_id}")
-        return make_succ_response('添加维修信息成功')
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'message': '添加维修信息成功'})
     except Exception as e:
         # 记录详细错误信息
         logger.error(f"添加维修信息失败: {str(e)}")
         log_exception(e)
-        # 返回包含详细错误信息的响应
-        return make_err_response(f"添加维修信息失败: {str(e)}")
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': f"添加维修信息失败: {str(e)}"}), 500
+
+
+@app.route('/api/execute_sql', methods=['POST'])
+def execute_sql():
+    """
+    执行SQL查询
+    :return: 查询结果
+    """
+    try:
+        # 获取请求体参数
+        params = request.get_json()
+        logger.info(f"收到SQL查询请求，参数: {params}")
+        
+        # 检查sql参数
+        if 'sql' not in params:
+            logger.warning("SQL查询请求缺少sql参数")
+            # 直接返回原始JSON格式，不包装
+            from flask import jsonify
+            return jsonify({'error': '缺少sql参数'}), 400
+        
+        sql = params['sql']
+        logger.info(f"开始执行SQL查询: {sql}")
+        
+        # 执行SQL查询
+        with db.engine.connect() as conn:
+            result = conn.execute(text(sql))
+            # 获取结果
+            rows = result.fetchall()
+            
+            # 转换为列表字典格式
+            result_list = []
+            for row in rows:
+                result_list.append(dict(row._mapping))
+        
+        logger.info(f"SQL查询成功，返回{len(result_list)}条记录")
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify(result_list)
+    except Exception as e:
+        # 记录详细错误信息
+        logger.error(f"SQL查询失败: {str(e)}")
+        log_exception(e)
+        # 直接返回原始JSON格式，不包装
+        from flask import jsonify
+        return jsonify({'error': f"SQL查询失败: {str(e)}"}), 500
