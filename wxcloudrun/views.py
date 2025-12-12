@@ -398,43 +398,62 @@ def add_repair():
 @app.route('/api/execute_sql', methods=['POST'])
 def execute_sql():
     """
-    执行SQL查询
-    :return: 查询结果
+    执行SQL查询或修改操作
+    :return: 查询结果或修改结果
     """
     try:
         # 获取请求体参数
         params = request.get_json()
-        logger.info(f"收到SQL查询请求，参数: {params}")
+        logger.info(f"收到SQL请求，参数: {params}")
         
         # 检查sql参数
         if 'sql' not in params:
-            logger.warning("SQL查询请求缺少sql参数")
+            logger.warning("SQL请求缺少sql参数")
             # 直接返回原始JSON格式，不包装
             from flask import jsonify
             return jsonify({'error': '缺少sql参数'}), 400
         
         sql = params['sql']
-        logger.info(f"开始执行SQL查询: {sql}")
+        logger.info(f"开始执行SQL: {sql}")
         
-        # 执行SQL查询
-        with db.engine.connect() as conn:
-            result = conn.execute(text(sql))
-            # 获取结果
-            rows = result.fetchall()
-            
-            # 转换为列表字典格式
-            result_list = []
-            for row in rows:
-                result_list.append(dict(row._mapping))
+        # 执行SQL
+        sql_type = sql.strip().upper().split()[0] if sql.strip() else ''
         
-        logger.info(f"SQL查询成功，返回{len(result_list)}条记录")
-        # 直接返回原始JSON格式，不包装
-        from flask import jsonify
-        return jsonify(result_list)
+        if sql_type in ['SELECT', 'SHOW', 'DESCRIBE', 'EXPLAIN']:
+            # 查询操作，使用连接执行，不需要事务
+            with db.engine.connect() as conn:
+                result = conn.execute(text(sql))
+                rows = result.fetchall()
+                # 转换为列表字典格式
+                result_list = []
+                for row in rows:
+                    result_list.append(dict(row._mapping))
+                
+                logger.info(f"SQL查询成功，返回{len(result_list)}条记录")
+                # 直接返回原始JSON格式，不包装
+                from flask import jsonify
+                return jsonify(result_list)
+        else:
+            # 修改操作（INSERT、UPDATE、DELETE、ALTER等），使用事务
+            with db.engine.begin() as conn:
+                result = conn.execute(text(sql))
+                
+                # 获取影响的行数
+                if hasattr(result, 'rowcount'):
+                    rowcount = result.rowcount
+                    logger.info(f"SQL修改操作成功，影响了{rowcount}行")
+                    # 直接返回原始JSON格式，不包装
+                    from flask import jsonify
+                    return jsonify({'message': '操作成功', 'rowcount': rowcount})
+                else:
+                    logger.info(f"SQL操作成功")
+                    # 直接返回原始JSON格式，不包装
+                    from flask import jsonify
+                    return jsonify({'message': '操作成功'})
     except Exception as e:
         # 记录详细错误信息
-        logger.error(f"SQL查询失败: {str(e)}")
+        logger.error(f"SQL执行失败: {str(e)}")
         log_exception(e)
         # 直接返回原始JSON格式，不包装
         from flask import jsonify
-        return jsonify({'error': f"SQL查询失败: {str(e)}"}), 500
+        return jsonify({'error': f"SQL执行失败: {str(e)}"}), 500

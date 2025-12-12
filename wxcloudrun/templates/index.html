@@ -112,24 +112,30 @@
 
 <body>
   <div class="container">
-    <h1>SQL查询工具</h1>
+    <h1>SQL执行工具</h1>
     
     <div class="sql-input-section">
-      <label for="sqlQuery">输入SQL查询语句：</label>
-      <textarea id="sqlQuery" placeholder="请输入SQL查询语句..."></textarea>
+      <label for="sqlQuery">输入SQL语句：</label>
+      <textarea id="sqlQuery" placeholder="请输入SQL语句..."></textarea>
       
       <div class="example-sql">
-        <h3>示例：</h3>
+        <h3>示例1 - 查询：</h3>
         SELECT *  
 FROM device_info_basic 
 WHERE device_id = 'Test_Connect';
       </div>
       
-      <button class="btn" onclick="executeSql()">执行查询</button>
+      <div class="example-sql">
+        <h3>示例2 - 新增：</h3>
+        INSERT INTO device_info_basic (device_id, device_type, rated_power, main_version, sub_version, bms_mode, cabinet_version, cooling_method, production_plant, production_date, serial_number) 
+VALUES ('Test_Insert', '组串式PCS', '430kW', 'Vinco200版', '第3版', '不内置', '不适用', '液冷Liquid-Cooled', '汇川HC', '2025-09-30', '00085');
+      </div>
+      
+      <button class="btn" onclick="executeSql()">提交</button>
     </div>
     
     <div class="result-section">
-      <h2>查询结果：</h2>
+      <h2>执行结果：</h2>
       <pre id="result"></pre>
     </div>
   </div>
@@ -140,7 +146,7 @@ WHERE device_id = 'Test_Connect';
       var sql = $("#sqlQuery").val();
       
       if (!sql.trim()) {
-        alert("请输入SQL查询语句");
+        alert("请输入SQL语句");
         return;
       }
       
@@ -152,7 +158,7 @@ WHERE device_id = 'Test_Connect';
           $("#result").text(JSON.stringify(res, null, 2));
         },
         error: function (err) {
-          var errorMsg = "查询失败，请稍后重试";
+          var errorMsg = "执行失败，请稍后重试";
           if (err.responseJSON) {
             errorMsg = JSON.stringify(err.responseJSON, null, 2);
           } else if (err.responseText) {
